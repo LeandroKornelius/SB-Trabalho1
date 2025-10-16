@@ -1,11 +1,11 @@
        COPY ZERO, OLDER
-	   COPY ONE, OLD
+       COPY ONE, OLD
        INPUT LIMIT
 FRONT: LOAD OLDER
        ADD OLD
        STORE NEW
        SUB LIMIT
-       HMPP FINAL
+       JMPP FINAL
        OUTPUT NEW
        COPY OLD, OLDER
        COPY NEW, OLD
