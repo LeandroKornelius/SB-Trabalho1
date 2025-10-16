@@ -1,8 +1,9 @@
        COPY ZERO, OLDER
        COPY ONE, OLD
        INPUT LIMIT
+       OUTPUT OLD
 FRONT: LOAD OLDER
-       ADD OLD
+	   ADD OLD
        STORE NEW
        SUB LIMIT
        JMPP FINAL

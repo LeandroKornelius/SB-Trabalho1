@@ -30,13 +30,25 @@ bool pertenceRegrasSintaticas(const vector<int>& v); // Parâmetro como const re
 */
 int contadorDeLinha = 1;
 int contadorDeEndereco = 0;
+int contadorDePosicao = 0;
+int lastToken = 0;
 
-/* ===================================
-   =       Lista de Pendencias       =
-   ===================================
-   = CORREÇÃO: O tipo do identificador
-   = do rótulo deve ser 'string'.
-   ===================================
+/* ==========================
+   =   Lista de Enderecos   =
+   ==========================
+   = número que tem em cada =
+   = endereco, ou seja, o   =
+   = código em sí           =
+   ==========================
+*/ 
+vector<int> listaDeEnderecos(216, 0);
+
+/* ====================================
+   =       Lista de Pendencias        =
+   ====================================
+   = O tipo do identificador          =
+   = do rótulo deve ser 'string'.     =
+   ====================================
 */
 vector<tuple<string, vector<int>>> listaDePendencias;
 
@@ -52,22 +64,62 @@ vector<tuple<string, int>> tabelaDeSimbolos;
 */
 vector<string> palavrasReservadas = 
 {
-    "ADD", "SUB", "MULT", "DIV", "JMP", "JMPN", "JMPP", "JMPZ", 
-    "COPY", "LOAD", "STORE", "INPUT", "OUTPUT", "STOP", 
-    "SPACE", "CONST"
+    "ADD",   //0
+    "SUB",   //1
+    "MULT",  //2
+    "DIV",   //3
+    "JMP",   //4
+    "JMPN",  //5
+    "JMPP",  //6
+    "JMPZ",  //7
+    "COPY",  //8
+    "LOAD",  //9
+    "STORE", //10
+    "INPUT", //11
+    "OUTPUT",//12
+    "STOP",  //13 
+    "SPACE", //14
+    "CONST"  //15
 };
 
 /* ==================================
    = Lista da sintaxe do programa   =
    ==================================
 */
-vector<vector<int>> regrasSintaticas = {        
-    {0, 20}, {1, 20}, {2, 20}, {3, 20}, {4, 20}, {5, 20}, {6, 20}, {7, 20}, 
-    {8, 20, 20}, {9, 20}, {10, 20}, {11, 20}, {12, 20}, {13}, {15, 30}, 
-    {20, 14}, {20, 14, 30}, {20, 0, 20}, {20, 1, 20}, {20, 2, 20}, {20, 3, 20}, 
-    {20, 4, 20}, {20, 5, 20}, {20, 6, 20}, {20, 7, 20}, {20, 8, 20, 20}, 
-    {20, 9, 20}, {20, 10, 20}, {20, 11, 20}, {20, 12, 20}, {20, 13}, {20, 15, 30}
-};
+ vector< vector<int>> regrasSintaticas={
+        {0, 20    },    // ADD
+        {1, 20    },    // SUB 
+        {2, 20    },    // MULT
+        {3, 20    },    // DIV 
+        {4, 20    },    // JMP 
+        {5, 20    },    // JMPN 
+        {6, 20    },    // JMPP 
+        {7, 20    },    // JMPZ 
+        {8, 20, 20},    // COPY 
+        {9, 20    },    // LOAD 
+        {10,20    },    // STORE
+        {11,20    },    // INPUT
+        {12,20    },    // OUTPUT
+        {13       },    // STOP
+        {15,30    },    // CONST
+        {20,14    },    // LABEL SPACE 
+        {20,14, 30},    // LABEL SPACE CONST
+        {20,0, 20 },    // LABEL ADD
+        {20,1, 20 },    // LABEL SUB 
+        {20,2, 20 },    // LABEL MULT
+        {20,3, 20 },    // LABEL DIV 
+        {20,4, 20 },    // LABEL JMP 
+        {20,5, 20 },    // LABEL JMPN 
+        {20,6, 20 },    // LABEL JMPP 
+        {20,7, 20 },    // LABEL JMPZ 
+        {20,8, 20, 20}, // LABEL COPY 
+        {20,9, 20 },    // LABEL LOAD 
+        {20,10,20 },    // LABEL STORE
+        {20,11,20 },    // LABEL INPUT
+        {20,12,20 },    // LABEL OUTPUT
+        {20,13    },    // LABEL STOP
+        {20,15,30 }     // LABEL CONST
+};  
 
 int main(int argc, char* argv[]) 
 {
@@ -82,6 +134,29 @@ int main(int argc, char* argv[])
     } catch (const runtime_error& e) {
         cerr << "Falha na compilacao: " << e.what() << endl;
         return 1;
+    }
+    cout << "=====================\n";
+    cout << "Tabela de Símbolos\n";
+    for(tuple<string, int> t : tabelaDeSimbolos)
+    {
+    	cout << get<0>(t) << " (&" << get<1>(t) << ")\n"; 
+    }
+    cout << "\n";
+    cout << "=====================\n";
+    cout << "Lista de Pendencias\n";
+    for(tuple<string, vector<int>> t : listaDePendencias)
+    {
+    	cout << get<0>(t) << " [ ";
+    	for(int i :get<1>(t))
+    	{
+    		cout << i << " ";
+    	}
+    	cout << "]\n";
+    }
+    cout << "Tabela Final\n";
+    for(int i: listaDeEnderecos)
+    {
+    	cout << i << " ";
     }
 
     cout << "O codigo compilou sem erros." << endl;
@@ -98,15 +173,18 @@ void leitorDeArquivo(string nome_do_arquivo)
         while (getline(arquivo, linha)) 
         {
             vector<string> v_linha = analisadorSintatico(linha);
-            
+            vector<string> v_linha2 = percorreLinha(linha);
             // Lógica de impressão (para depuração)
-            if (!v_linha.empty()) {
+            
+            if (!v_linha2.empty()) {
                 cout << "[" << contadorDeLinha << "] ";
-                for(const string& str : v_linha) {
+                for(const string& str : v_linha2) 
+                {
                     cout << str << " ";
                 }
                 cout << "\n";
             }
+           
             contadorDeLinha++;
         }
         arquivo.close();
@@ -146,13 +224,14 @@ bool pertenceRegrasSintaticas(const vector<int>& v)
 vector<int> verificaTokens(const vector<string>& v)
 {
 	int contadorDePalavra = 0;
-    vector<int> v_temp;
+    vector<int> v_t1;
     for(const string& str: v)
     {
-        v_temp.push_back(analisadorLexico(str, contadorDePalavra));
+        v_t1.push_back(analisadorLexico(str, contadorDePalavra));
         contadorDePalavra ++;
     }
-    return v_temp;
+    //cout << "\n";
+    return v_t1;
 }
 
 vector<string> percorreLinha(string linha)
@@ -182,15 +261,101 @@ vector<string> percorreLinha(string linha)
 
 int analisadorLexico(const string& str, int contadorDePalavra) 
 {
+	
     auto it = find(palavrasReservadas.begin(), palavrasReservadas.end(), str);
-    if (it != palavrasReservadas.end()) 
-        return distance(palavrasReservadas.begin(), it);
+    if (it != palavrasReservadas.end())
+    {
+        lastToken = distance(palavrasReservadas.begin(), it);
+        //cout << "\n" << str << "(&" << contadorDeEndereco << ") " << contadorDePosicao << " " << lastToken << "\n";
+        //SPACE
+        if(lastToken == 14 || lastToken == 15)
+        {
+        	//SPACE
+        	if(lastToken == 14)
+        	{
+        		listaDeEnderecos[contadorDePosicao] = 0;
+    			contadorDePosicao++;
+        	}
+        	if(lastToken == 15)
+        	{}
+        }
+        else
+        {
+    		listaDeEnderecos[contadorDePosicao] = (lastToken + 1);
+    		contadorDePosicao ++;
+    	}
+    	contadorDeEndereco ++;
+    	return lastToken;
+    } 
         
     if (isLabel(str))
-        return 20;
+    {
+    	int t0 = procuraNaTabelaDeSimbolos(str);
+    	// Achou na tabela de simbolos
+    	if (t0>= 0)
+    	{
+    		// Se esta no inicio é pq achou outra definicao
+    		if (contadorDePalavra == 0)
+    			throw runtime_error("Erro Semantico na linha [" + to_string(contadorDeLinha) + "]: Rótulo já definido");
+    		// Primeira definicao da label
+    		else
+    		{
+    			//cout << "****" << get<1>(tabelaDeSimbolos[t0]) << "****";
+    			//listaDeEnderecos[contadorDePosicao] = get<1>(tabelaDeSimbolos[t0]);
+    			contadorDeEndereco++;
+    			contadorDePosicao++;
+    			//cout << "Já definido "  << str << "\n";
+    		}
+    	}
+    	// Não achou na tabela de simbolos
+    	else
+    	{
+    	// Esta no inicio 
+    	if (contadorDePalavra == 0)
+    	{
+    		//É rótulo adicionando na tabela de simbolos...\n";
+    		tabelaDeSimbolos.push_back(make_tuple(str, contadorDeEndereco));
+    	}
+    	// Não esta no inicio
+    	else
+    	{
+    		int t1 = procuraNalistaDePendencias(str);
+    		//já foi inserido na lista adicionando mais uma pendencia...\n";
+    		if (t1 >= 0)
+    		{
+    			vector<int> v = get<1>(listaDePendencias[t1]);
+    			v.push_back(contadorDeEndereco);
+    			listaDePendencias[t1] = make_tuple(str, v);
+    		}
+    		//primeira ocorrência e não foi definido adicionando na lista de pendencias...\n";
+    		else
+    		{
+    			vector<int> v = {contadorDeEndereco};
+    		    listaDePendencias.push_back(make_tuple(str, v));
+    		}
+    		contadorDeEndereco++;
+    		contadorDePosicao++;
+    	}
+    	}
+    	
+    	return 20;	
+    }
     
-    if (isNumeric(str))
-        return 30;
+    if (isNumeric(str));
+    {
+    	if(lastToken == 14)
+    	{
+   			contadorDeEndereco += stoi(str);
+   			contadorDePosicao++;
+   		}
+   		else
+   		{
+   			listaDeEnderecos[contadorDePosicao] = stoi(str);
+   			contadorDeEndereco ++;
+   			contadorDePosicao++;
+   		}
+   		return 30;
+    }
 
     throw runtime_error("Erro Lexico na linha [" + to_string(contadorDeLinha) + "]: Token '" + str + "' invalido.");
 }
