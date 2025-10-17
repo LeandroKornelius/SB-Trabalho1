@@ -30,7 +30,8 @@ bool inSyntax(const vector<int>& v);
 void showTabelaDeSimbolos();
 void showListaDePendencias();
 void showFinal();
-void sequenciaFinal();
+void showTratado();
+void showNaoTratado();
 
 /* ======================
     = Variaveis Globais =
@@ -66,6 +67,13 @@ vector<tuple<string, vector<int>>> listaDePendencias;
    ========================
 */
 vector<tuple<string, int>> tabelaDeSimbolos;
+
+/* ========================
+   = Saída não tratada o1 =
+   ========================
+*/ 
+vector<string> tokensSintaticamenteCorretos;
+vector<int> saidaO1;
 
 /* ================================
    = Lista de palavras reservadas =
@@ -133,12 +141,12 @@ vector<string> palavrasReservadas =
 
 int main(int argc, char* argv[]) 
 {
-    if (argc < 2) {
+    if (argc < 3) {
         cerr << "Erro: Forneca um nome de arquivo como argumento.\n";
         cerr << "Uso: " << argv[0] << " arquivo.asm\n";
         return 1;
     }
-
+	cout << "Arquivo: " << argv[1] << "\nFuncao: " << argv[2] << "\n";
     try {
         leitorDeArquivo(argv[1]);
     } catch (const runtime_error& e) {
@@ -146,14 +154,44 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-    showTabelaDeSimbolos();
-    showListaDePendencias();
-    showFinal();
+    string opcao = argv[2];
+    int t = 0;
+    
+    if (opcao == "all")
+    	t = 1;
+    	
+    if (opcao == "o1")
+    	t = 2;
+    	
+    if (opcao == "o2")
+    	t = 3;
+    	
+    switch(t)
+    {
+    	case(1):
+    		showTabelaDeSimbolos();
+    		showListaDePendencias();
+    		showNaoTratado();
+    		showFinal();
+    		break;
+    		
+    	case(2):
+    		showTabelaDeSimbolos();
+    		showListaDePendencias();
+    		showNaoTratado();
+    		break;
+    	
+    	case(3):
+    		showFinal();
+    		break;
+    	default:
+    		cout << "Insira um argumento válido: all, o1, o2.";
+    }
     
     return 0;
 }
 
-void sequenciaFinal()
+void showTratado()
 {
 	for(tuple<string, vector<int>> t : listaDePendencias)
 	{
@@ -191,13 +229,12 @@ void leitorDeArquivo(const string& nome_do_arquivo)
     }
 }
 
-void analisadorSintatico(const string& linha) 
+void analisadorSintatico(const string& str) 
 {
-    vector<string> tokens = percorreLinha(linha);
+    vector<string> tokens = percorreLinha(str);
     if (tokens.empty()) return;
 
     vector<int> tokensVerificados = verificaTokens(tokens);
-    vector<string> tokensSintaticamenteCorretos;
     
     if(inSyntax(tokensVerificados))
     {
@@ -207,7 +244,7 @@ void analisadorSintatico(const string& linha)
         }
         return;
     }
-    throw runtime_error("Erro Sintatico na linha:\n[" + to_string(contadorDeLinha) + "]" + linha + "\n" );
+    throw runtime_error("Erro Sintatico na linha:\n[" + to_string(contadorDeLinha) + "]" + str + "\n" );
 }
 
 /*
@@ -242,6 +279,7 @@ vector<string> percorreLinha(const string& str)
     string linha = str + " ";
     
     for (char chr : linha) 
+    {
         chr = toupper(chr);
         if (chr == ' ' || chr == '\t' || chr == ',' || chr == ':') 
         {
@@ -413,7 +451,6 @@ bool isNum(const string& str)
 
 void showTabelaDeSimbolos()
 {
-	cout << "\n";
     cout << "====================\n";
     cout << "=Tabela de Símbolos=\n";
     cout << "====================\n";
@@ -445,14 +482,49 @@ void showListaDePendencias()
 
 void showFinal()
 {
+	cout << "\n";
 	cout << "==============\n";
     cout << "=    Final   =\n";
     cout << "==============\n";
     cout << "\n";
-    sequenciaFinal();
+    showTratado();
     for(int i = 0; i < contadorDePalavra; i++)
     {
     	cout << listaDeEnderecos[i] << " ";
     }
 	cout << "\n";
 }
+
+void showNaoTratado()
+{
+	cout << "======================\n";
+	cout << "= Codigo sem correcao=\n";
+	cout << "=    de pendencias   =\n";
+	cout << "======================\n";
+	for(int i = 0; i < contadorDePalavra; i++)
+	{
+		cout << listaDeEnderecos[i] << " ";
+	}
+	cout << "\n";
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
