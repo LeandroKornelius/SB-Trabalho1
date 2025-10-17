@@ -4,7 +4,7 @@
 #include <fstream>
 #include <algorithm>
 #include <stdexcept>
-#include <tuple> // Necessário para usar std::tuple
+#include <tuple>
 
 using namespace std;
 
@@ -12,17 +12,25 @@ using namespace std;
     = Declaracao de Funcoes Auxiliares =
     ====================================
 */
-void leitorDeArquivo(string nome_do_arquivo);
-vector<string> analisadorSintatico(const string& linha);
-vector<string> percorreLinha(string str);
-vector<int> verificaTokens(const vector<string>& v); // Parâmetro como const reference
+void leitorDeArquivo(const string& nome_do_arquivo);
+void analisadorSintatico(const string& str);
 
-int analisadorLexico(const string& str, int contadorDePalavra); // Protótipo simplificado
-int procuraNaTabelaDeSimbolos(const string& str);
-int procuraNalistaDePendencias(const string& str);
-bool isNumeric(const string& str);
+vector<string> percorreLinha(const string& str);
+
+vector<int> verificaTokens(const vector<string>& v);
+
+int analisadorLexico(const string& str, int n);
+
+int idxTS(const string& str);
+int idxLP(const string& str);
+bool isNum(const string& str);
 bool isLabel(const string& str);
-bool pertenceRegrasSintaticas(const vector<int>& v); // Parâmetro como const reference
+bool inSyntax(const vector<int>& v);
+
+void showTabelaDeSimbolos();
+void showListaDePendencias();
+void showFinal();
+void sequenciaFinal();
 
 /* ======================
     = Variaveis Globais =
@@ -31,6 +39,7 @@ bool pertenceRegrasSintaticas(const vector<int>& v); // Parâmetro como const re
 int contadorDeLinha = 1;
 int contadorDeEndereco = 0;
 int contadorDePosicao = 0;
+int contadorDePalavra = 0;
 int lastToken = 0;
 
 /* ==========================
@@ -64,61 +73,62 @@ vector<tuple<string, int>> tabelaDeSimbolos;
 */
 vector<string> palavrasReservadas = 
 {
-    "ADD",   //0
-    "SUB",   //1
-    "MULT",  //2
-    "DIV",   //3
-    "JMP",   //4
-    "JMPN",  //5
-    "JMPP",  //6
-    "JMPZ",  //7
-    "COPY",  //8
-    "LOAD",  //9
-    "STORE", //10
-    "INPUT", //11
-    "OUTPUT",//12
-    "STOP",  //13 
-    "SPACE", //14
-    "CONST"  //15
+    "",      //0
+    "ADD",   //1
+    "SUB",   //2
+    "MULT",  //3
+    "DIV",   //4
+    "JMP",   //5
+    "JMPN",  //6
+    "JMPP",  //7
+    "JMPZ",  //8
+    "COPY",  //9
+    "LOAD",  //10
+    "STORE", //11
+    "INPUT", //12
+    "OUTPUT",//13
+    "STOP",  //14 
+    "SPACE", //15
+    "CONST"  //16
 };
 
 /* ==================================
    = Lista da sintaxe do programa   =
    ==================================
 */
- vector< vector<int>> regrasSintaticas={
-        {0, 20    },    // ADD
-        {1, 20    },    // SUB 
-        {2, 20    },    // MULT
-        {3, 20    },    // DIV 
-        {4, 20    },    // JMP 
-        {5, 20    },    // JMPN 
-        {6, 20    },    // JMPP 
-        {7, 20    },    // JMPZ 
-        {8, 20, 20},    // COPY 
-        {9, 20    },    // LOAD 
-        {10,20    },    // STORE
-        {11,20    },    // INPUT
-        {12,20    },    // OUTPUT
-        {13       },    // STOP
-        {15,30    },    // CONST
-        {20,14    },    // LABEL SPACE 
-        {20,14, 30},    // LABEL SPACE CONST
-        {20,0, 20 },    // LABEL ADD
-        {20,1, 20 },    // LABEL SUB 
-        {20,2, 20 },    // LABEL MULT
-        {20,3, 20 },    // LABEL DIV 
-        {20,4, 20 },    // LABEL JMP 
-        {20,5, 20 },    // LABEL JMPN 
-        {20,6, 20 },    // LABEL JMPP 
-        {20,7, 20 },    // LABEL JMPZ 
-        {20,8, 20, 20}, // LABEL COPY 
-        {20,9, 20 },    // LABEL LOAD 
-        {20,10,20 },    // LABEL STORE
-        {20,11,20 },    // LABEL INPUT
-        {20,12,20 },    // LABEL OUTPUT
-        {20,13    },    // LABEL STOP
-        {20,15,30 }     // LABEL CONST
+ vector< vector<int>> syntaxRules={
+        {1, 20    },    // ADD
+        {2, 20    },    // SUB 
+        {3, 20    },    // MULT
+        {4, 20    },    // DIV 
+        {5, 20    },    // JMP 
+        {6, 20    },    // JMPN 
+        {7, 20    },    // JMPP 
+        {8, 20    },    // JMPZ 
+        {9, 20, 20},    // COPY 
+        {10, 20    },   // LOAD 
+        {11,20    },    // STORE
+        {12,20    },    // INPUT
+        {13,20    },    // OUTPUT
+        {14       },    // STOP
+        {16,30    },    // CONST
+        {20,15    },    // LABEL SPACE 
+        {20,15, 30},    // LABEL SPACE CONST
+        {20,1, 20 },    // LABEL ADD
+        {20,2, 20 },    // LABEL SUB 
+        {20,3, 20 },    // LABEL MULT
+        {20,4, 20 },    // LABEL DIV 
+        {20,5, 20 },    // LABEL JMP 
+        {20,6, 20 },    // LABEL JMPN 
+        {20,7, 20 },    // LABEL JMPP 
+        {20,8, 20 },    // LABEL JMPZ 
+        {20,9, 20, 20}, // LABEL COPY 
+        {20,10, 20 },   // LABEL LOAD 
+        {20,11,20 },    // LABEL STORE
+        {20,12,20 },    // LABEL INPUT
+        {20,13,20 },    // LABEL OUTPUT
+        {20,14    },    // LABEL STOP
+        {20,16,30 }     // LABEL CONST
 };  
 
 int main(int argc, char* argv[]) 
@@ -135,35 +145,33 @@ int main(int argc, char* argv[])
         cerr << "Falha na compilacao: " << e.what() << endl;
         return 1;
     }
-    cout << "=====================\n";
-    cout << "Tabela de Símbolos\n";
-    for(tuple<string, int> t : tabelaDeSimbolos)
-    {
-    	cout << get<0>(t) << " (&" << get<1>(t) << ")\n"; 
-    }
-    cout << "\n";
-    cout << "=====================\n";
-    cout << "Lista de Pendencias\n";
-    for(tuple<string, vector<int>> t : listaDePendencias)
-    {
-    	cout << get<0>(t) << " [ ";
-    	for(int i :get<1>(t))
-    	{
-    		cout << i << " ";
-    	}
-    	cout << "]\n";
-    }
-    cout << "Tabela Final\n";
-    for(int i: listaDeEnderecos)
-    {
-    	cout << i << " ";
-    }
-
-    cout << "O codigo compilou sem erros." << endl;
+    
+    showTabelaDeSimbolos();
+    showListaDePendencias();
+    showFinal();
+    
     return 0;
 }
 
-void leitorDeArquivo(string nome_do_arquivo) 
+void sequenciaFinal()
+{
+	for(tuple<string, vector<int>> t : listaDePendencias)
+	{
+		int pos = idxTS(get<0>(t));
+		
+		if (pos == -1)
+			throw runtime_error("Erro Semantico rótulo não definido: " + get<0>(t));
+			
+		int endereco = get<1>(tabelaDeSimbolos[idxTS(get<0>(t))]);
+		
+		for(int i: get<1>(t))
+		{
+			listaDeEnderecos[i] = endereco;
+		}
+	}
+}
+
+void leitorDeArquivo(const string& nome_do_arquivo) 
 {
     ifstream arquivo(nome_do_arquivo);
     string linha;
@@ -172,19 +180,7 @@ void leitorDeArquivo(string nome_do_arquivo)
     {
         while (getline(arquivo, linha)) 
         {
-            vector<string> v_linha = analisadorSintatico(linha);
-            vector<string> v_linha2 = percorreLinha(linha);
-            // Lógica de impressão (para depuração)
-            
-            if (!v_linha2.empty()) {
-                cout << "[" << contadorDeLinha << "] ";
-                for(const string& str : v_linha2) 
-                {
-                    cout << str << " ";
-                }
-                cout << "\n";
-            }
-           
+            analisadorSintatico(linha);
             contadorDeLinha++;
         }
         arquivo.close();
@@ -195,53 +191,57 @@ void leitorDeArquivo(string nome_do_arquivo)
     }
 }
 
-vector<string> analisadorSintatico(const string& linha) 
+void analisadorSintatico(const string& linha) 
 {
     vector<string> tokens = percorreLinha(linha);
-    if (tokens.empty()) return {}; // Retorna vetor vazio para linhas vazias
+    if (tokens.empty()) return;
 
-    vector<int> v_int = verificaTokens(tokens);
-    vector<string> v2;
+    vector<int> tokensVerificados = verificaTokens(tokens);
+    vector<string> tokensSintaticamenteCorretos;
     
-    if(pertenceRegrasSintaticas(v_int))
+    if(inSyntax(tokensVerificados))
     {
-        for(int i: v_int)
+        for(int i: tokensVerificados)
         {
-            v2.push_back(to_string(i));
+            tokensSintaticamenteCorretos.push_back(to_string(i));
         }
-        return v2;
+        return;
     }
     throw runtime_error("Erro Sintatico na linha:\n[" + to_string(contadorDeLinha) + "]" + linha + "\n" );
 }
 
-bool pertenceRegrasSintaticas(const vector<int>& v)
+/*
+	Verifica se o vector de inteiros esta presente
+	nas regras sintaticas.
+*/
+bool inSyntax(const vector<int>& v)
 {
-    if (v.empty()) return true; // Linha vazia é sintaticamente correta
-    auto it = find(regrasSintaticas.begin(), regrasSintaticas.end(), v);
-    return (it != regrasSintaticas.end());
+    if (v.empty()) return true;
+    auto it = find(syntaxRules.begin(), syntaxRules.end(), v);
+    return (it != syntaxRules.end());
 }
-
+/*
+	Gera uma lista com o tipo do token
+*/
 vector<int> verificaTokens(const vector<string>& v)
 {
-	int contadorDePalavra = 0;
+	int posicaoDePalavra = 0;
     vector<int> v_t1;
     for(const string& str: v)
     {
-        v_t1.push_back(analisadorLexico(str, contadorDePalavra));
-        contadorDePalavra ++;
+        v_t1.push_back(analisadorLexico(str, posicaoDePalavra));
+        posicaoDePalavra ++;
     }
-    //cout << "\n";
     return v_t1;
 }
 
-vector<string> percorreLinha(string linha)
+vector<string> percorreLinha(const string& str)
 {
     vector<string> v;
     string palavra = "";
-    linha += " ";
+    string linha = str + " ";
     
     for (char chr : linha) 
-    {
         chr = toupper(chr);
         if (chr == ' ' || chr == '\t' || chr == ',' || chr == ':') 
         {
@@ -259,90 +259,94 @@ vector<string> percorreLinha(string linha)
     return v;
 }
 
-int analisadorLexico(const string& str, int contadorDePalavra) 
+int analisadorLexico(const string& str, int posicaoDePalavra) 
 {
-	
     auto it = find(palavrasReservadas.begin(), palavrasReservadas.end(), str);
     if (it != palavrasReservadas.end())
     {
         lastToken = distance(palavrasReservadas.begin(), it);
-        //cout << "\n" << str << "(&" << contadorDeEndereco << ") " << contadorDePosicao << " " << lastToken << "\n";
-        //SPACE
-        if(lastToken == 14 || lastToken == 15)
+        if(lastToken == 15 || lastToken == 16)
         {
-        	//SPACE
-        	if(lastToken == 14)
+        	// SPACE
+        	if(lastToken == 15)
         	{
         		listaDeEnderecos[contadorDePosicao] = 0;
     			contadorDePosicao++;
+    			contadorDePalavra ++;
+    			contadorDeEndereco ++;
         	}
-        	if(lastToken == 15)
+        	// CONST
+        	if(lastToken == 16)
         	{}
         }
         else
         {
-    		listaDeEnderecos[contadorDePosicao] = (lastToken + 1);
+    		listaDeEnderecos[contadorDePosicao] = lastToken;
     		contadorDePosicao ++;
+    		contadorDePalavra ++;
+    		contadorDeEndereco ++;
     	}
-    	contadorDeEndereco ++;
     	return lastToken;
     } 
         
     if (isLabel(str))
     {
-    	int t0 = procuraNaTabelaDeSimbolos(str);
+    	int t0 = idxTS(str);
     	// Achou na tabela de simbolos
     	if (t0>= 0)
     	{
-    		// Se esta no inicio é pq achou outra definicao
-    		if (contadorDePalavra == 0)
+    		// Se esta no inicio eh pq achou outra definicao
+    		if (posicaoDePalavra == 0)
     			throw runtime_error("Erro Semantico na linha [" + to_string(contadorDeLinha) + "]: Rótulo já definido");
-    		// Primeira definicao da label
+    		// Nao esta no inicio, pode colocar na listaDeEnderecos
     		else
     		{
-    			//cout << "****" << get<1>(tabelaDeSimbolos[t0]) << "****";
-    			//listaDeEnderecos[contadorDePosicao] = get<1>(tabelaDeSimbolos[t0]);
+    			listaDeEnderecos[contadorDePosicao] = get<1>(tabelaDeSimbolos[t0]);
     			contadorDeEndereco++;
     			contadorDePosicao++;
-    			//cout << "Já definido "  << str << "\n";
+    			contadorDePalavra ++;
     		}
     	}
+    	
     	// Não achou na tabela de simbolos
     	else
     	{
-    	// Esta no inicio 
-    	if (contadorDePalavra == 0)
-    	{
-    		//É rótulo adicionando na tabela de simbolos...\n";
-    		tabelaDeSimbolos.push_back(make_tuple(str, contadorDeEndereco));
-    	}
-    	// Não esta no inicio
-    	else
-    	{
-    		int t1 = procuraNalistaDePendencias(str);
-    		//já foi inserido na lista adicionando mais uma pendencia...\n";
-    		if (t1 >= 0)
-    		{
-    			vector<int> v = get<1>(listaDePendencias[t1]);
-    			v.push_back(contadorDeEndereco);
-    			listaDePendencias[t1] = make_tuple(str, v);
-    		}
-    		//primeira ocorrência e não foi definido adicionando na lista de pendencias...\n";
-    		else
-    		{
-    			vector<int> v = {contadorDeEndereco};
-    		    listaDePendencias.push_back(make_tuple(str, v));
-    		}
-    		contadorDeEndereco++;
-    		contadorDePosicao++;
-    	}
+    		// Se esta no inicio eh pq esta sendo definido 
+			if (posicaoDePalavra == 0)
+			{
+				tabelaDeSimbolos.push_back(make_tuple(str, contadorDeEndereco));
+			}
+			
+			// Nao esta no inicio portanto precisa ser definido
+			else
+			{
+				contadorDePalavra ++;
+				int t1 = idxLP(str);
+				
+				// Esta na lista de pendencia, adicionando mais uma pendencia
+				if (t1 >= 0)
+				{
+					vector<int> v = get<1>(listaDePendencias[t1]);
+					v.push_back(contadorDeEndereco);
+					listaDePendencias[t1] = make_tuple(str, v);
+				}
+				// Nao esta na lista de pendencia, criando primeira pendencia";
+				else
+				{
+					vector<int> v = {contadorDeEndereco};
+				    listaDePendencias.push_back(make_tuple(str, v));
+				}
+				contadorDeEndereco++;
+				contadorDePosicao++;
+			}
     	}
     	
     	return 20;	
     }
     
-    if (isNumeric(str));
+    if (isNum(str))
     {
+    	contadorDePalavra ++;
     	if(lastToken == 14)
     	{
    			contadorDeEndereco += stoi(str);
@@ -356,28 +360,29 @@ int analisadorLexico(const string& str, int contadorDePalavra)
    		}
    		return 30;
     }
-
+    
     throw runtime_error("Erro Lexico na linha [" + to_string(contadorDeLinha) + "]: Token '" + str + "' invalido.");
+
 }
 
-int procuraNaTabelaDeSimbolos(const string& str)
+int idxTS(const string& str)
 {
     for(size_t i = 0; i < tabelaDeSimbolos.size(); ++i)
     {
         if(get<0>(tabelaDeSimbolos[i]) == str)
-            return i; // Retorna o índice se encontrar
+            return i;
     }
-    return -1; // Retorna -1 APÓS percorrer a lista inteira
+    return -1;
 }
 
-int procuraNalistaDePendencias(const string& str)
+int idxLP(const string& str)
 {
     for(size_t i = 0; i < listaDePendencias.size(); ++i)
     {
-        if(get<0>(listaDePendencias[i]) == str) // get<0> agora é string
-            return i; // Retorna o índice se encontrar
+        if(get<0>(listaDePendencias[i]) == str)
+            return i;
     }
-    return -1; // Retorna -1 APÓS percorrer a lista inteira
+    return -1;
 }
 
 
@@ -396,12 +401,58 @@ bool isLabel(const string& str)
     return false;
 }
 
-bool isNumeric(const string& str) 
+bool isNum(const string& str) 
 {
     if (str.empty()) return false;
-    for (char const &c : str) 
+    for (char c : str) 
     {
         if (isdigit(c) == 0) return false;
     }
     return true;
+}
+
+void showTabelaDeSimbolos()
+{
+	cout << "\n";
+    cout << "====================\n";
+    cout << "=Tabela de Símbolos=\n";
+    cout << "====================\n";
+    cout << "\n";
+    for(tuple<string, int> t : tabelaDeSimbolos)
+    {
+    	cout << get<0>(t) << " (&" << get<1>(t) << ")\n"; 
+    }
+    cout << "\n";
+}
+
+void showListaDePendencias()
+{
+	cout << "=====================\n";
+    cout << "=Lista de Pendencias=\n";
+    cout << "=====================\n";
+    cout << "\n";
+    for(tuple<string, vector<int>> t : listaDePendencias)
+    {
+    	cout << get<0>(t) << " [ ";
+    	for(int i :get<1>(t))
+    	{
+    		cout << i << " ";
+    	}
+    	cout << "]\n";
+    }
+    cout << "\n";
+}
+
+void showFinal()
+{
+	cout << "==============\n";
+    cout << "=    Final   =\n";
+    cout << "==============\n";
+    cout << "\n";
+    sequenciaFinal();
+    for(int i = 0; i < contadorDePalavra; i++)
+    {
+    	cout << listaDeEnderecos[i] << " ";
+    }
+	cout << "\n";
 }
