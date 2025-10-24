@@ -1,0 +1,25 @@
+        INPUT N1
+        INPUT N2
+        INPUT N3
+MAIOR1: LOAD N1
+        SUB N2
+        JMPN MAIOR1 + 12
+        LOAD N1
+        STORE TEMP
+        JMP MAIOR1 + 16
+        LOAD N2
+        STORE TEMP
+MAIOR2: LOAD TEMP
+        SUB N3
+        JMPP MAIOR2 + 12
+        LOAD TEMP
+        STORE TEMP
+        JMP MAIOR2 + 16
+        LOAD N3
+        STORE TEMP
+        OUTPUT TEMP
+        STOP
+    N1: SPACE
+    N2: SPACE
+    N3: SPACE
+  TEMP: SPACE

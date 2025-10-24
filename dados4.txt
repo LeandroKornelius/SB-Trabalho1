@@ -1,0 +1,15 @@
+     INPUT N 
+     LOAD N
+     JMPN AAA
+     JMPP AAA + 4
+AAA: OUTPUT N1
+     JMP FIM 
+     OUTPUT N2
+FIM: STOP
+  N: SPACE
+ N1: CONST 10
+ N2: CONST 20
+ N3: SPACE
+
+
+
