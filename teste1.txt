@@ -1,0 +1,9 @@
+    troca:    macro     
+copy   a ,   temp   ; comentário após instrução
+   copy b ,a
+copy temp , b  
+endmacro   
+
+   load   x   ; teste de espaços antes e depois
+Troca   ; chamada com maiúsculas e minúsculas
+stop  

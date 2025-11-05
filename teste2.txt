@@ -1,0 +1,10 @@
+   incr:   MACRO   x , y   
+   load   x   
+add   one   ; comentário
+  store   y  
+   endmacro
+
+; chamada com espaços e tabulações
+INCR    n1 ,    n2   
+   incr   VALUE  ,RESULT  ; chamada em minúsculo
+stop

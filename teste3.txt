@@ -1,0 +1,16 @@
+  dup:  MACRO   a  
+  COPY   a , temp
+COPY temp , a   
+endmacro  
+
+Troca:   macro x , y  
+   DUP x   
+COPY x , TEMP   COPY y , x
+COPY TEMP , y
+endmacro
+
+var1:   space   10  
+var2: const 5 
+
+   troca   var1 , var2 
+stop  
