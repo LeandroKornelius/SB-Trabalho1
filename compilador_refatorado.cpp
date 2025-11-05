@@ -127,11 +127,17 @@ private:
     void showRawOutput();
     void showFinalOutput();
     void showAll();
+    
+    // Novos métodos para escrita em arquivo
+    void writeRawOutput(const string& filename);
+    void writeFinalOutput(const string& filename);
+    string getBaseFilename(const string& fullPath);
 
 public:
     Assembler();
     void compile(const string& filename);
     void displayOutput(const string& option);
+    void generateOutputFiles(const string& inputFilename, const string& option);
 };
 
 // ============================================================================
@@ -467,6 +473,69 @@ void Assembler::showFinalOutput() {
     cout << "\n";
 }
 
+void Assembler::writeRawOutput(const string& filename) {
+    string outputFile = getBaseFilename(filename) + ".o1";
+    ofstream file(outputFile);
+    
+    if (!file.is_open()) {
+        throw runtime_error("Nao foi possivel criar o arquivo " + outputFile);
+    }
+    
+    // Mostra saída não tratada (com pendências como linked list)
+    vector<int> tempList = addressList;
+    
+    for (const auto& pending : pendingReferences) {
+        int previous = -1;
+        for (int pos : pending.positions) {
+            tempList[pos] = previous;
+            previous = pos;
+        }
+    }
+    
+    for (int i = 0; i < wordCount; i++) {
+        file << tempList[i];
+        if (i < wordCount - 1) file << " ";
+    }
+    file << "\n";
+    
+    file.close();
+    cout << "Arquivo " << outputFile << " gerado com sucesso.\n";
+}
+
+void Assembler::writeFinalOutput(const string& filename) {
+    string outputFile = getBaseFilename(filename) + ".o2";
+    ofstream file(outputFile);
+    
+    if (!file.is_open()) {
+        throw runtime_error("Nao foi possivel criar o arquivo " + outputFile);
+    }
+    
+    resolvePendingReferences();
+    
+    for (int i = 0; i < wordCount; i++) {
+        file << addressList[i];
+        if (i < wordCount - 1) file << " ";
+    }
+    file << "\n";
+    
+    file.close();
+    cout << "Arquivo " << outputFile << " gerado com sucesso.\n";
+}
+
+string Assembler::getBaseFilename(const string& fullPath) {
+    // Remove o diretório do caminho
+    size_t lastSlash = fullPath.find_last_of("/\\");
+    string filename = (lastSlash != string::npos) ? fullPath.substr(lastSlash + 1) : fullPath;
+    
+    // Remove a extensão
+    size_t lastDot = filename.find_last_of(".");
+    if (lastDot != string::npos) {
+        filename = filename.substr(0, lastDot);
+    }
+    
+    return filename;
+}
+
 void Assembler::showAll() {
     showSymbolTable();
     showPendingReferences();
@@ -496,6 +565,20 @@ void Assembler::displayOutput(const string& option) {
     }
 }
 
+void Assembler::generateOutputFiles(const string& inputFilename, const string& option) {
+    if (option == "all") {
+        showAll();
+        writeRawOutput(inputFilename);
+        writeFinalOutput(inputFilename);
+    } else if (option == "o1") {
+        writeRawOutput(inputFilename);
+    } else if (option == "o2") {
+        writeFinalOutput(inputFilename);
+    } else {
+        cout << "Insira um argumento valido: all, o1, o2.\n";
+    }
+}
+
 // ============================================================================
 // FUNÇÃO PRINCIPAL
 // ============================================================================
@@ -510,7 +593,7 @@ int main(int argc, char* argv[]) {
     try {
         Assembler assembler;
         assembler.compile(argv[1]);
-        assembler.displayOutput(argv[2]);
+        assembler.generateOutputFiles(argv[1], argv[2]);
     } catch (const runtime_error& e) {
         cerr << e.what() << endl;
         return 1;
