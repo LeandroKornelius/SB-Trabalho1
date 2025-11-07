@@ -58,7 +58,10 @@ std::vector<std::string> Preprocessor::splitArgs(const std::string& s) {
 
 void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRaw) {
     if (macros.size() >= 2) {
-        std::cerr << "Warning: more than 2 macros detected; only first two are recommended by spec. Still storing this macro.\n";
+        // Lançar um erro é mais seguro, como discutimos
+        throw std::runtime_error("Erro: Mais de 2 macros definidas no programa.");
+        // Ou, se preferir apenas avisar (não recomendado pela spec):
+        // std::cerr << "Warning: more than 2 macros detected; only first two are recommended by spec. Still storing this macro.\n";
     }
 
     std::string firstLine = toUpper(trim(firstLineRaw));
@@ -66,12 +69,12 @@ void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRa
     // Expect pattern: NAME: MACRO [args]
     size_t colon = firstLine.find(':');
     if (colon == std::string::npos) {
-        throw std::runtime_error("Macro definition must use LABEL: MACRO ...");
+        throw std::runtime_error("Erro: Definicao de macro deve usar 'LABEL: MACRO ...'");
     }
     std::string name = trim(firstLine.substr(0, colon));
     size_t macroPos = firstLine.find("MACRO", colon);
     if (macroPos == std::string::npos) {
-        throw std::runtime_error("Macro definition line does not contain MACRO token");
+        throw std::runtime_error("Erro: Linha de definicao de macro nao contem 'MACRO'.");
     }
 
     Macro m;
@@ -87,15 +90,36 @@ void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRa
         }
     }
 
+    // Verifica limite de 2 argumentos (Spec [11])
+    if (m.args.size() > 2) {
+        throw std::runtime_error("Erro: Macro '" + m.name + "' definida com mais de 2 argumentos.");
+    }
+
+
     // read body until ENDMACRO
     std::string line;
     while (std::getline(fin, line)) {
-        std::string norm = toUpper(trim(line));
-        if (norm.empty()) continue;
-        // allow ENDMACRO with or without trailing spaces
+        
+        // --- CORREÇÃO PARA REMOVER COMENTÁRIOS ---
+        std::string noComment;
+        size_t commentPos = line.find(';'); // Procura o ';' na linha crua
+        if (commentPos != std::string::npos) {
+            noComment = line.substr(0, commentPos); // Pega só a parte antes
+        } else {
+            noComment = line; // Linha inteira
+        }
+        // --- FIM DA CORREÇÃO ---
+
+        std::string norm = toUpper(trim(noComment)); // Agora usa 'noComment'
+        
+        if (norm.empty()) continue; // pula linhas em branco
+
+        // permite ENDMACRO com ou sem espaços
         if (norm == "ENDMACRO") break;
-        // normalize internal spacing
+        
+        // normaliza espaçamento interno
         norm = collapseSpaces(norm);
+        
         m.body.push_back(norm);
     }
     macros.push_back(std::move(m));
