@@ -57,16 +57,15 @@ std::vector<std::string> Preprocessor::splitArgs(const std::string& s) {
 }
 
 void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRaw) {
+    
+    // limite de 2 macros
     if (macros.size() >= 2) {
-        // Lançar um erro é mais seguro, como discutimos
-        throw std::runtime_error("Erro: Mais de 2 macros definidas no programa.");
-        // Ou, se preferir apenas avisar (não recomendado pela spec):
-        // std::cerr << "Warning: more than 2 macros detected; only first two are recommended by spec. Still storing this macro.\n";
+        throw std::runtime_error("Erro: Mais de 2 macros definidas no programa (Limite da especificacao).");
     }
 
     std::string firstLine = toUpper(trim(firstLineRaw));
 
-    // Expect pattern: NAME: MACRO [args]
+    // Parse do cabeçalho da macro: NOME: MACRO [args]
     size_t colon = firstLine.find(':');
     if (colon == std::string::npos) {
         throw std::runtime_error("Erro: Definicao de macro deve usar 'LABEL: MACRO ...'");
@@ -80,7 +79,7 @@ void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRa
     Macro m;
     m.name = name;
 
-    // arguments are everything after 'MACRO'
+    // Parse dos argumentos
     std::string argsPart = trim(firstLine.substr(macroPos + 5));
     if (!argsPart.empty()) {
         auto parts = splitArgs(argsPart);
@@ -90,17 +89,16 @@ void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRa
         }
     }
 
-    // Verifica limite de 2 argumentos (Spec [11])
+    // verifica quantidade de args
     if (m.args.size() > 2) {
-        throw std::runtime_error("Erro: Macro '" + m.name + "' definida com mais de 2 argumentos.");
+        throw std::runtime_error("Erro: Macro '" + m.name + "' definida com mais de 2 argumentos (Limite da especificacao).");
     }
 
-
-    // read body until ENDMACRO
+    // Leitura do corpo da macro
     std::string line;
     while (std::getline(fin, line)) {
         
-        // --- CORREÇÃO PARA REMOVER COMENTÁRIOS ---
+        // remove comentarios da macro
         std::string noComment;
         size_t commentPos = line.find(';'); // Procura o ';' na linha crua
         if (commentPos != std::string::npos) {
@@ -108,20 +106,21 @@ void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRa
         } else {
             noComment = line; // Linha inteira
         }
-        // --- FIM DA CORREÇÃO ---
-
-        std::string norm = toUpper(trim(noComment)); // Agora usa 'noComment'
         
-        if (norm.empty()) continue; // pula linhas em branco
 
-        // permite ENDMACRO com ou sem espaços
+        std::string norm = toUpper(trim(noComment)); // Usa 'noComment'
+        
+        if (norm.empty()) continue; // Pula linhas em branco
+
+        // Verifica o fim da macro
         if (norm == "ENDMACRO") break;
         
-        // normaliza espaçamento interno
+        // Normaliza espaçamento e armazena a linha do corpo
         norm = collapseSpaces(norm);
-        
         m.body.push_back(norm);
     }
+    
+    // Armazena a macro finalizada no vetor
     macros.push_back(std::move(m));
 }
 

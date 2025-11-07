@@ -1,17 +1,9 @@
-  dup:  MACRO   a  
-  COPY   a , temp
-COPY temp , a   
-endmacro  
+; Esta macro eh ilegal
+SOMA_TRES: MACRO ARG1, ARG2, ARG3
+    COPY &ARG1, R1
+    ADD R1, &ARG2
+    ADD R1, &ARG3
+ENDMACRO
 
-Troca:   macro x , y  
-   DUP x   
-COPY x , TEMP   ; ISSO É UM COMENTÁRIO
-COPY y , x
-COPY TEMP , y
-endmacro
-
-var1:   space   10  
-var2: const 5 
-
-   troca   var1 , var2 
-stop  
+START:
+    SOMA_TRES 1, 2, 3
