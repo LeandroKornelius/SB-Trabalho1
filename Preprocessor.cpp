@@ -57,27 +57,29 @@ std::vector<std::string> Preprocessor::splitArgs(const std::string& s) {
 }
 
 void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRaw) {
+    
+    // limite de 2 macros
     if (macros.size() >= 2) {
-        std::cerr << "Warning: more than 2 macros detected; only first two are recommended by spec. Still storing this macro.\n";
+        throw std::runtime_error("Erro: Mais de 2 macros definidas no programa (Limite da especificacao).");
     }
 
     std::string firstLine = toUpper(trim(firstLineRaw));
 
-    // Expect pattern: NAME: MACRO [args]
+    // Parse do cabeçalho da macro: NOME: MACRO [args]
     size_t colon = firstLine.find(':');
     if (colon == std::string::npos) {
-        throw std::runtime_error("Macro definition must use LABEL: MACRO ...");
+        throw std::runtime_error("Erro: Definicao de macro deve usar 'LABEL: MACRO ...'");
     }
     std::string name = trim(firstLine.substr(0, colon));
     size_t macroPos = firstLine.find("MACRO", colon);
     if (macroPos == std::string::npos) {
-        throw std::runtime_error("Macro definition line does not contain MACRO token");
+        throw std::runtime_error("Erro: Linha de definicao de macro nao contem 'MACRO'.");
     }
 
     Macro m;
     m.name = name;
 
-    // arguments are everything after 'MACRO'
+    // Parse dos argumentos
     std::string argsPart = trim(firstLine.substr(macroPos + 5));
     if (!argsPart.empty()) {
         auto parts = splitArgs(argsPart);
@@ -87,24 +89,43 @@ void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRa
         }
     }
 
-    // read body until ENDMACRO
+    // verifica quantidade de args
+    if (m.args.size() > 2) {
+        throw std::runtime_error("Erro: Macro '" + m.name + "' definida com mais de 2 argumentos (Limite da especificacao).");
+    }
+
+    // Leitura do corpo da macro
     std::string line;
     while (std::getline(fin, line)) {
-        std::string norm = toUpper(trim(line));
-        if (norm.empty()) continue;
-        // allow ENDMACRO with or without trailing spaces
+        
+        // remove comentarios da macro
+        std::string noComment;
+        size_t commentPos = line.find(';'); // Procura o ';' na linha crua
+        if (commentPos != std::string::npos) {
+            noComment = line.substr(0, commentPos); // Pega só a parte antes
+        } else {
+            noComment = line; // Linha inteira
+        }
+        
+
+        std::string norm = toUpper(trim(noComment)); // Usa 'noComment'
+        
+        if (norm.empty()) continue; // Pula linhas em branco
+
+        // Verifica o fim da macro
         if (norm == "ENDMACRO") break;
-        // normalize internal spacing
+        
+        // Normaliza espaçamento e armazena a linha do corpo
         norm = collapseSpaces(norm);
         m.body.push_back(norm);
     }
+    
+    // Armazena a macro finalizada no vetor
     macros.push_back(std::move(m));
 }
 
 bool Preprocessor::isMacroCall(const std::string& line, const Macro*& outMacro, std::vector<std::string>& callArgs) const {
-    // line is already normalized to uppercase and trimmed & collapsed
     for (const auto& m : macros) {
-        // match only if the line starts with macro name and next char is space or end or '(' (but spec uses comma)
         if (line.size() >= m.name.size() && line.compare(0, m.name.size(), m.name) == 0) {
             if (line.size() == m.name.size()) {
                 outMacro = &m;
@@ -114,8 +135,7 @@ bool Preprocessor::isMacroCall(const std::string& line, const Macro*& outMacro, 
             char next = line[m.name.size()];
             if (next == ' ' || next == '\t') {
                 std::string rest = trim(line.substr(m.name.size()));
-                // rest contains arguments possibly separated by commas
-                // some calls might write: NAME ARG1, ARG2
+                
                 if (!rest.empty()) {
                     auto parts = splitArgs(rest);
                     callArgs.clear();
@@ -160,15 +180,13 @@ std::string Preprocessor::substituteArgsInLine(const std::string& line, const st
 
 void Preprocessor::expandMacro(std::ofstream& fout, const Macro& macro, const std::vector<std::string>& args, int depth) {
     if (depth > 20) throw std::runtime_error("Macro expansion exceeded maximum depth (possible recursion)");
-    // expand each body line, substitute args, and write; if expanded line is another macro call, expand recursively
     for (auto bline : macro.body) {
-        // substitute formal arguments
+        
         std::string replaced = substituteArgsInLine(bline, macro.args, args);
-        // normalize spacing and trim
+        
         replaced = trim(collapseSpaces(replaced));
         if (replaced.empty()) continue;
 
-        // check if this line is a macro call itself
         const Macro* inner = nullptr;
         std::vector<std::string> innerArgs;
         if (isMacroCall(replaced, inner, innerArgs)) {
@@ -194,7 +212,7 @@ void Preprocessor::process(const std::string& inputFile) {
 
     std::string rawLine;
     while (std::getline(fin, rawLine)) {
-        // Remove comments starting at ';' if any
+        // remove comentarios
         std::string noComment;
         size_t commentPos = rawLine.find(';');
         if (commentPos != std::string::npos) noComment = rawLine.substr(0, commentPos);
@@ -204,11 +222,9 @@ void Preprocessor::process(const std::string& inputFile) {
         if (normalized.empty()) continue; // skip blank lines
         normalized = collapseSpaces(normalized);
 
-        // If this is a macro definition starter (contains ': MACRO' pattern)
-        // We rely on presence of token MACRO in the line
         if (normalized.find("MACRO") != std::string::npos) {
             storeMacro(fin, normalized);
-            continue; // do not write macro definition to output
+            continue; 
         }
 
         // check if this is a macro call
