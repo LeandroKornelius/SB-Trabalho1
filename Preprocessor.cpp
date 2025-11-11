@@ -4,7 +4,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <iostream>
-
+#include <fstream> 
 static bool isIdentChar(char c) {
     return (std::isalnum(static_cast<unsigned char>(c)) || c == '_');
 }
@@ -80,11 +80,16 @@ void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRa
     m.name = name;
 
     // Parse dos argumentos
-    std::string argsPart = trim(firstLine.substr(macroPos + 5));
+    std::string argsPart = trim(firstLine.substr(macroPos + 5)); // após "MACRO"
     if (!argsPart.empty()) {
         auto parts = splitArgs(argsPart);
         for (auto& p : parts) {
             std::string up = toUpper(p);
+            // Remove &, se presente.
+            if (!up.empty() && up[0] == '&') {
+                up.erase(0, 1);
+            }
+            up = trim(up);
             m.args.push_back(up);
         }
     }
@@ -107,7 +112,6 @@ void Preprocessor::storeMacro(std::ifstream& fin, const std::string& firstLineRa
             noComment = line; // Linha inteira
         }
         
-
         std::string norm = toUpper(trim(noComment)); // Usa 'noComment'
         
         if (norm.empty()) continue; // Pula linhas em branco
@@ -179,14 +183,27 @@ std::string Preprocessor::substituteArgsInLine(const std::string& line, const st
 }
 
 void Preprocessor::expandMacro(std::ofstream& fout, const Macro& macro, const std::vector<std::string>& args, int depth) {
-    if (depth > 20) throw std::runtime_error("Macro expansion exceeded maximum depth (possible recursion)");
+    if (depth > 20)
+        throw std::runtime_error("Macro expansion exceeded maximum depth (possible recursion)");
+
     for (auto bline : macro.body) {
-        
-        std::string replaced = substituteArgsInLine(bline, macro.args, args);
-        
+        // remove & do corpo da macro expandida
+        std::string cleanLine;
+        cleanLine.reserve(bline.size());
+        for (char c : bline) {
+            if (c != '&') cleanLine.push_back(c);
+        }
+
+        // Substitui argumentos
+        std::string replaced = substituteArgsInLine(cleanLine, macro.args, args);
         replaced = trim(collapseSpaces(replaced));
         if (replaced.empty()) continue;
 
+        // Ignora rotulos
+        if (replaced.back() == ':' || (replaced.find(':') != std::string::npos && replaced.find(':') == replaced.size() - 1))
+            continue;
+
+        // Expansao recursiva de macros dentro de macros
         const Macro* inner = nullptr;
         std::vector<std::string> innerArgs;
         if (isMacroCall(replaced, inner, innerArgs)) {
@@ -222,18 +239,42 @@ void Preprocessor::process(const std::string& inputFile) {
         if (normalized.empty()) continue; // skip blank lines
         normalized = collapseSpaces(normalized);
 
+        // Se for definição de macro no cabeçalho (pode haver label: MACRO ...)
         if (normalized.find("MACRO") != std::string::npos) {
             storeMacro(fin, normalized);
             continue; 
         }
 
-        // check if this is a macro call
+        // trata linha com rótulo seguido de instrução na mesma linha
+        std::string label;
+        std::string lineToProcess = normalized;
+        size_t colonPos = lineToProcess.find(':');
+        if (colonPos != std::string::npos) {
+            // extrai o rótulo (incluindo ':') e o resto
+            label = lineToProcess.substr(0, colonPos + 1);
+            std::string after = trim(lineToProcess.substr(colonPos + 1));
+            if (after.empty()) {
+                // linha só com rótulo: escreve e segue
+                fout << label << "\n";
+                continue;
+            }
+            lineToProcess = after;
+        }
+
+        // verifica se e chamada de macro sem rotulo
         const Macro* called = nullptr;
         std::vector<std::string> callArgs;
-        if (isMacroCall(normalized, called, callArgs)) {
+        if (isMacroCall(lineToProcess, called, callArgs)) {
+            // se havia rótulo, escrevemos o rótulo em linha separada antes da expansão
+            if (!label.empty()) fout << label << "\n";
             expandMacro(fout, *called, callArgs, 0);
         } else {
-            fout << normalized << "\n";
+            // não é chamada de macro: reescreve mantendo o rótulo (se houver)
+            if (!label.empty()) {
+                fout << label << " " << lineToProcess << "\n";
+            } else {
+                fout << lineToProcess << "\n";
+            }
         }
     }
 
