@@ -237,6 +237,20 @@ int Assembler::analyzeLexeme(const string& str, int position, const vector<strin
     
     if (it != RESERVED_WORDS.end()) {
         int tokenType = distance(RESERVED_WORDS.begin(), it);
+        
+        // Tratamento especial para SPACE
+        if (tokenType == SPACE) {
+            // Verifica se SPACE é seguido por um número
+            bool hasNumber = (position + 1 < allTokens.size() && isNumber(allTokens[position + 1]));
+            if (!hasNumber) {
+                // SPACE sem número - adiciona um único zero
+                addressList[currentPosition] = 0;
+                currentPosition++;
+                wordCount++;
+                currentAddress++;
+            }
+        }
+        
         processReservedWord(tokenType);
         lastToken = tokenType;
         return tokenType;
@@ -281,10 +295,8 @@ int Assembler::analyzeLexeme(const string& str, int position, const vector<strin
 
 void Assembler::processReservedWord(int tokenType) {
     if (tokenType == SPACE) {
-        addressList[currentPosition] = 0;
-        currentPosition++;
-        wordCount++;
-        currentAddress++;
+        // Não adiciona nada aqui - será tratado pelo número que segue
+        // ou pelo processamento especial de SPACE sem número
     } else if (tokenType != CONST && tokenType != PLUS && tokenType != INVALID) {
         addressList[currentPosition] = tokenType;
         currentPosition++;
@@ -310,6 +322,8 @@ void Assembler::processNumber(const string& str) {
     wordCount++;
     int value = stoi(str);
     
+    cout << "DEBUG: processNumber called with value=" << value << ", lastToken=" << lastToken << " (SPACE=" << SPACE << ")" << endl;
+    
     if (lastToken == STOP) {
         currentAddress += value;
         currentPosition++;
@@ -317,6 +331,15 @@ void Assembler::processNumber(const string& str) {
         // Este é um offset para uma expressão LABEL + NUMBER
         pendingOffset = value;
         wordCount--;  // Não conta o número como palavra separada
+    } else if (lastToken == SPACE) {
+        // SPACE seguido de NUMBER: adiciona 'value' zeros
+        wordCount--; // Remove a contagem extra do wordCount++
+        for (int i = 0; i < value; i++) {
+            addressList[currentPosition] = 0;
+            currentPosition++;
+            wordCount++;
+            currentAddress++;
+        }
     } else {
         addressList[currentPosition] = value;
         currentAddress++;

@@ -1,13 +1,20 @@
 A parte o1 e o2 está no arquivo compilador_refatorado.cpp.
+A parte do pre processador está no arquivo main.cpp
+
+LINUX UBUNTU
 
 compilar:
-g++ -std=c++17 compilador_refatorado.cpp -o compilador_refatorado.o
+g++ compilador_refatorado.cpp -o compilador.o
+g++ pre.cpp -o preprocessor
+
+executar parte pré-processador:
+./preprocessor dados.asm
 
 executar parte o1:
-./compilador_refatorado.o dados.txt o1
+./compilador.o dados.pre o1
 
 executar parte o2:
-./compilador_refatorado.o dados.txt o2
+./compilador.o dados.pre o2
 
-executar ambos:
-./compilador_refatorado.o dados.txt all
+executar ambos o1 e o2:
+./compilador.o dados.pre all
