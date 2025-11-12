@@ -3,6 +3,7 @@ A parte do pre processador está no arquivo pre.cpp
 
 Alunos:
 Erick Taira 222011525  |  Lucca Magalhães 222011552  |  Leandro Beloti Kornelius 211020900
+
 LINUX UBUNTU
 
 compilar:
