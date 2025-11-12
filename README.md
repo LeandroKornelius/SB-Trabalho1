@@ -4,8 +4,8 @@ A parte do pre processador está no arquivo main.cpp
 LINUX UBUNTU
 
 compilar:
-g++ compilador_refatorado.cpp -o compilador.o
-g++ pre.cpp -o preprocessor
+g++ compilador.cpp -o compilador
+g++ -o preprocessor pre.cpp Preprocessor.cpp
 
 executar parte pré-processador:
 ./preprocessor dados.asm

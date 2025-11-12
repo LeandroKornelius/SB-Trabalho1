@@ -1,0 +1,3 @@
+VAR: SPACE 10
+STOP
+

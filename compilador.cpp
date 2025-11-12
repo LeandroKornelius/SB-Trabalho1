@@ -322,8 +322,6 @@ void Assembler::processNumber(const string& str) {
     wordCount++;
     int value = stoi(str);
     
-    cout << "DEBUG: processNumber called with value=" << value << ", lastToken=" << lastToken << " (SPACE=" << SPACE << ")" << endl;
-    
     if (lastToken == STOP) {
         currentAddress += value;
         currentPosition++;
